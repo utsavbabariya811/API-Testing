@@ -1,0 +1,229 @@
+{
+  "info": {
+    "name": "PR4 - Task Manager REST API",
+    "description": "Postman collection for Practical 4: RESTful API with Node.js and Express (ITUE301). Tests all CRUD endpoints plus middleware pipeline scenarios.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. GET All Tasks",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/tasks",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["tasks"]
+        },
+        "description": "Retrieves all tasks from in-memory store. Returns 200 OK with count and data array."
+      }
+    },
+    {
+      "name": "2. GET All Tasks (filter completed)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/tasks?completed=false",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["tasks"],
+          "query": [{ "key": "completed", "value": "false" }]
+        },
+        "description": "Filter tasks by completion status. Use ?completed=true or ?completed=false."
+      }
+    },
+    {
+      "name": "3. GET Single Task by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/tasks/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["tasks", "1"]
+        },
+        "description": "Returns a single task by its numeric ID. Returns 200 OK or 404 Not Found."
+      }
+    },
+    {
+      "name": "4. POST Create New Task",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Study Express Middleware Pipeline\",\n  \"completed\": false\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://localhost:5000/tasks",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["tasks"]
+        },
+        "description": "Creates a new task. Requires Content-Type: application/json header and a 'title' field. Returns 201 Created."
+      }
+    },
+    {
+      "name": "5. PUT Update Task by ID",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Updated Task Title\",\n  \"completed\": true\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://localhost:5000/tasks/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["tasks", "1"]
+        },
+        "description": "Updates an existing task by ID. Returns 200 OK or 404 Not Found."
+      }
+    },
+    {
+      "name": "6. DELETE Task by ID",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/tasks/3",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["tasks", "3"]
+        },
+        "description": "Deletes a task by ID. Returns 200 OK with deleted task data, or 404 Not Found."
+      }
+    },
+    {
+      "name": "--- MIDDLEWARE TESTS ---",
+      "item": [
+        {
+          "name": "7. POST Missing Content-Type Header (400)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"Missing Header Task\"}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/tasks",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["tasks"]
+            },
+            "description": "Tests Content-Type validation middleware. No Content-Type header is set. Should return 400 Bad Request."
+          }
+        },
+        {
+          "name": "8. GET Invalid Task ID Format (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/tasks/abc",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["tasks", "abc"]
+            },
+            "description": "Tests route-specific ID validation middleware. 'abc' is not a valid integer. Should return 400 Bad Request."
+          }
+        },
+        {
+          "name": "9. GET Non-Existent Task (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/tasks/9999",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["tasks", "9999"]
+            },
+            "description": "Valid ID format but task does not exist. Should return 404 Not Found."
+          }
+        },
+        {
+          "name": "10. GET Undefined Route (404 Handler)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/unknown",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "unknown"]
+            },
+            "description": "Tests the 404 undefined route handler middleware. Returns structured JSON for any unmatched route."
+          }
+        },
+        {
+          "name": "11. GET Trigger Global Error Handler (500)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/tasks/test-error",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["tasks", "test-error"]
+            },
+            "description": "Demo endpoint that deliberately throws an error and passes it to next(err). Triggers the global error handling middleware. Returns 500 Internal Server Error with sanitized JSON (no raw stack trace exposed to client)."
+          }
+        },
+        {
+          "name": "12. POST Missing Title Field (400 Validation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"completed\": false\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "http://localhost:5000/tasks",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["tasks"]
+            },
+            "description": "Tests request body validation inside the controller. Missing 'title' field returns 400 Bad Request."
+          }
+        }
+      ]
+    }
+  ]
+}

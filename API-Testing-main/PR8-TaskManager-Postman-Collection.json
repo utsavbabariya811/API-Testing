@@ -1,0 +1,588 @@
+{
+  "info": {
+    "_postman_id": "pr8-taskmanager-api-testing-collection",
+    "name": "Practical 8 - Task Manager API & Testing Suite",
+    "description": "Complete Postman collection for Practical 8 Task Manager API, including Authentication (Register, Login, Profile), Task CRUD operations (HATEOAS, Filters, Pagination), Error Handling, and Validation.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "1.1 Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.token) {",
+                  "    pm.collectionVariables.set('token', response.token);",
+                  "    console.log('Token captured:', response.token);",
+                  "}",
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Contains Token & User', function () {",
+                  "    pm.expect(response).to.have.property('token');",
+                  "    pm.expect(response).to.have.property('user');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Registers a new user and automatically stores the JWT token in collection variables."
+          }
+        },
+        {
+          "name": "1.2 Register User - Validation Error (Short Password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"invalid@example.com\",\n  \"password\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Tests validation: password must be at least 6 characters (Expects 400 Bad Request)."
+          }
+        },
+        {
+          "name": "1.3 Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.token) {",
+                  "    pm.collectionVariables.set('token', response.token);",
+                  "    console.log('Login token saved to collection variable:', response.token);",
+                  "}",
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returns JWT Token', function () {",
+                  "    pm.expect(response.token).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Logs in with registered credentials and saves JWT token to {{token}}."
+          }
+        },
+        {
+          "name": "1.4 Login - Invalid Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Verifies 401 Unauthorized when password does not match bcrypt hash."
+          }
+        },
+        {
+          "name": "1.5 Get Current User Profile (/auth/me)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Retrieves the authenticated user profile using Bearer JWT."
+          }
+        },
+        {
+          "name": "1.6 Get Current User Profile - Missing Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Verifies 401 Unauthorized when no Authorization header is sent."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Tasks Management",
+      "item": [
+        {
+          "name": "2.1 Create Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.data && response.data._id) {",
+                  "    pm.collectionVariables.set('taskId', response.data._id);",
+                  "    console.log('Saved taskId:', response.data._id);",
+                  "}",
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Response includes HATEOAS _links', function () {",
+                  "    pm.expect(response).to.have.property('_links');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Complete Practical 8 API Testing\",\n  \"description\": \"Test all endpoints in Postman with JWT and HATEOAS\",\n  \"status\": \"pending\",\n  \"priority\": \"high\",\n  \"dueDate\": \"2026-10-01T12:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"]
+            },
+            "description": "Creates a task, validates payload, returns HATEOAS links, and saves _id to {{taskId}}."
+          }
+        },
+        {
+          "name": "2.2 Create Task - Validation Error (Empty Title)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"   \",\n  \"status\": \"invalid_status\",\n  \"priority\": \"super_high\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"]
+            },
+            "description": "Verifies 400 Bad Request on invalid title, priority, and status enums."
+          }
+        },
+        {
+          "name": "2.3 Get All Tasks (Paginated & HATEOAS)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks?page=1&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Returns paginated list of tasks with total count, totalPages, and collection HATEOAS links."
+          }
+        },
+        {
+          "name": "2.4 Search Tasks (Keyword Filter)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks?search=Practical",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Practical"
+                }
+              ]
+            },
+            "description": "Filter tasks where title or description matches the search keyword (case-insensitive)."
+          }
+        },
+        {
+          "name": "2.5 Filter Tasks by Status & Priority",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks?status=pending&priority=high",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "priority",
+                  "value": "high"
+                }
+              ]
+            },
+            "description": "Filters tasks by both status and priority enums."
+          }
+        },
+        {
+          "name": "2.6 Get Task by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}"]
+            },
+            "description": "Fetches a single task by its MongoDB ObjectId."
+          }
+        },
+        {
+          "name": "2.7 Update Task (PUT - Full Replace)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Complete Practical 8 API Testing (Updated)\",\n  \"description\": \"Updated description with full replacement\",\n  \"status\": \"in-progress\",\n  \"priority\": \"medium\",\n  \"dueDate\": \"2026-10-05T12:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}"]
+            },
+            "description": "Replaces all task fields with input validation and returns updated HATEOAS links."
+          }
+        },
+        {
+          "name": "2.8 Partial Update Task (PATCH - Status/Progress)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}"]
+            },
+            "description": "Updates only the status field to 'completed', auto-syncing completed=true."
+          }
+        },
+        {
+          "name": "2.9 Delete Task",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}"]
+            },
+            "description": "Deletes the task by ID."
+          }
+        },
+        {
+          "name": "2.10 Delete Task - Not Found (404)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/507f1f77bcf86cd799439011",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "507f1f77bcf86cd799439011"]
+            },
+            "description": "Verifies 404 response when deleting a non-existent valid ObjectId."
+          }
+        },
+        {
+          "name": "2.11 Invalid ObjectId Format (400)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/invalid-mongo-id-123",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "invalid-mongo-id-123"]
+            },
+            "description": "Verifies idValidator middleware triggers 400 Bad Request for malformed ObjectId."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Error & Middleware Testing",
+      "item": [
+        {
+          "name": "3.1 Global Error Pipeline (/tasks/test-error)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/test-error",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "test-error"]
+            },
+            "description": "Deliberately triggers central 500 error handler middleware to test pipeline."
+          }
+        },
+        {
+          "name": "3.2 404 Not Found (Invalid Endpoint Route)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/non-existent-route",
+              "host": ["{{baseUrl}}"],
+              "path": ["non-existent-route"]
+            },
+            "description": "Tests notFoundHandler middleware for undefined routes."
+          }
+        },
+        {
+          "name": "3.3 Missing Content-Type Header on POST",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"No Content-Type\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"]
+            },
+            "description": "Verifies contentTypeMiddleware rejects POST requests without Content-Type: application/json."
+          }
+        }
+      ]
+    }
+  ]
+}

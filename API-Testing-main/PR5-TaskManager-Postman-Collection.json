@@ -1,0 +1,199 @@
+{
+  "info": {
+    "_postman_id": "b5a910d5-adwf-45cd-pr5-taskmanager-api",
+    "name": "Practical 5 - Task Manager API (MongoDB & Mongoose)",
+    "description": "Postman Collection for testing Practical 5 Task Management REST API with MongoDB integration, Mongoose Schema validation, priority enum, pre-save title trimming, and central error handling.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. GET All Tasks",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/tasks",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tasks"]
+        }
+      }
+    },
+    {
+      "name": "2. GET Tasks Filtered by Completed Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/tasks?completed=true",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tasks"],
+          "query": [{ "key": "completed", "value": "true" }]
+        }
+      }
+    },
+    {
+      "name": "3. GET Tasks Filtered by Priority",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/tasks?priority=high",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tasks"],
+          "query": [{ "key": "priority", "value": "high" }]
+        }
+      }
+    },
+    {
+      "name": "4. POST Create Valid Task (With Priority & Title Whitespace)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"   Master Mongoose Schema Validation   \",\n  \"description\": \"Connect MongoDB and perform CRUD using Mongoose models.\",\n  \"completed\": false,\n  \"priority\": \"high\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/tasks",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tasks"]
+        }
+      }
+    },
+    {
+      "name": "5. POST Create Task - Validation Error (Missing Required Title)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"description\": \"Missing title field deliberate validation failure\",\n  \"priority\": \"medium\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/tasks",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tasks"]
+        }
+      }
+    },
+    {
+      "name": "6. POST Create Task - Validation Error (Invalid Enum Priority)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Invalid Enum Task\",\n  \"priority\": \"super-critical\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/tasks",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tasks"]
+        }
+      }
+    },
+    {
+      "name": "7. GET Task by ObjectId",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/tasks/:id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tasks", ":id"],
+          "variable": [{ "key": "id", "value": "66b1a234c567890123456789" }]
+        }
+      }
+    },
+    {
+      "name": "8. GET Task - Invalid ObjectId Format (400 Bad Request)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/tasks/invalid-hex-id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tasks", "invalid-hex-id"]
+        }
+      }
+    },
+    {
+      "name": "9. GET Task - Non-Existent ObjectId (404 Not Found)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/tasks/507f1f77bcf86cd799439011",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tasks", "507f1f77bcf86cd799439011"]
+        }
+      }
+    },
+    {
+      "name": "10. PUT Update Task by ObjectId",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"completed\": true,\n  \"priority\": \"medium\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/tasks/:id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tasks", ":id"],
+          "variable": [{ "key": "id", "value": "66b1a234c567890123456789" }]
+        }
+      }
+    },
+    {
+      "name": "11. DELETE Task by ObjectId",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/tasks/:id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tasks", ":id"],
+          "variable": [{ "key": "id", "value": "66b1a234c567890123456789" }]
+        }
+      }
+    },
+    {
+      "name": "12. GET Test Internal Server Error (500)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/tasks/test-error",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tasks", "test-error"]
+        }
+      }
+    }
+  ]
+}

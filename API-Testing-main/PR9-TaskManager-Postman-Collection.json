@@ -1,0 +1,367 @@
+{
+  "info": {
+    "_postman_id": "pr9-taskmanager-caching-collection",
+    "name": "Practical 9 - In-Memory Caching & Query Optimization",
+    "description": "Postman Collection for Practical 9: In-Memory Caching using node-cache, cache hit/miss measurement, cache invalidation, and debug endpoint.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Authentication (Get Token)",
+      "item": [
+        {
+          "name": "Login to obtain JWT Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.token) {",
+                  "    pm.collectionVariables.set('token', response.token);",
+                  "    console.log('Captured JWT Token for Practical 9:', response.token);",
+                  "}",
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. In-Memory Caching - All Tasks (GET /tasks)",
+      "item": [
+        {
+          "name": "1.1 First GET /tasks (Expected: CACHE MISS - Cold DB Read)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"]
+            },
+            "description": "First call queries MongoDB and caches the formatted payload under key 'all_tasks'."
+          }
+        },
+        {
+          "name": "1.2 Second GET /tasks (Expected: CACHE HIT - Fast RAM Read)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"]
+            },
+            "description": "Second call serves directly from node-cache in RAM without querying MongoDB."
+          }
+        },
+        {
+          "name": "1.3 Third GET /tasks (Expected: CACHE HIT - Measure Timing)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"]
+            },
+            "description": "Third call to record cache timing for comparison table."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Cache Invalidation Flow (POST /tasks)",
+      "item": [
+        {
+          "name": "2.1 POST /tasks (Invalidates 'all_tasks' cache)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set('taskId', res.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Benchmark Cache Invalidation Task\",\n  \"description\": \"Ensures POST clears stale all_tasks RAM cache\",\n  \"priority\": \"high\",\n  \"status\": \"pending\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"]
+            }
+          }
+        },
+        {
+          "name": "2.2 GET /tasks After POST (Expected: CACHE MISS with new task)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Single Task Caching & Invalidation (GET /tasks/:id)",
+      "item": [
+        {
+          "name": "3.1 First GET /tasks/:id (Expected: CACHE MISS - task_<id>)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.2 Second GET /tasks/:id (Expected: CACHE HIT - task_<id>)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.3 PUT /tasks/:id (Invalidates all_tasks & task_<id>)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Benchmark Cache Invalidation Task (Updated via PUT)\",\n  \"description\": \"Updated description to test invalidation\",\n  \"status\": \"in-progress\",\n  \"priority\": \"medium\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.4 GET /tasks/:id After PUT (Expected: CACHE MISS with updated data)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.5 DELETE /tasks/:id (Invalidates all_tasks & task_<id>)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Debug & Cache Metrics",
+      "item": [
+        {
+          "name": "GET /tasks/debug/cache (Inspect Hits, Misses, Active Keys)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/debug/cache",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "debug", "cache"]
+            },
+            "description": "Returns cacheHits, cacheMisses, active keys, and internal node-cache statistics."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "name": "task-manager-api",
+  "version": "1.0.0",
+  "description": "RESTful API built with Node.js and Express featuring middleware pipeline, CRUD endpoints, and centralized error handling.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "server": "node server.js",
+    "client": "npm run dev --prefix client",
+    "client:build": "npm run build --prefix client",
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,magenta\" \"npm run server\" \"npm run client\"",
+    "test": "node test-api.js"
+  },
+  "keywords": [
+    "express",
+    "nodejs",
+    "rest-api",
+    "middleware",
+    "crud"
+  ],
+  "author": "ADWF Practical 4",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.9.1",
+    "node-cache": "^5.1.2"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "mongodb-memory-server": "^11.2.0"
+  }
+}
