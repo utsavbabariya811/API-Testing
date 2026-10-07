@@ -6,6 +6,7 @@ const authMiddleware = require('../middleware/auth');
 const validateTask = require('../middleware/validateTask');
 const { generateTaskLinks, generateCollectionLinks } = require('../utils/taskLinks');
 const cache = require('../utils/cache');
+const taskEvents = require('../events/events');
 
 const { ALL_TASKS_CACHE_KEY, TASK_CACHE_PREFIX } = cache;
 
@@ -207,12 +208,20 @@ router.post('/', validateTask, async (req, res, next) => {
     const links = generateTaskLinks(savedTask);
     taskObj._links = links;
 
+    // Sync vs async demo: uncomment the next line to simulate blocking
+    // notification logic inside the route, take your screenshot, then comment it again.
+    // await new Promise((r) => setTimeout(r, 2000));
+
+    // Practical 10: respond first, then emit the event for background processing
+    console.log(`[API] Response sent at ${new Date().toISOString()}`);
     res.status(201).json({
       success: true,
       message: 'Task created successfully',
       data: taskObj,
       _links: links
     });
+
+    taskEvents.emit('task-created', { task: taskObj, user: req.user });
   } catch (err) {
     next(err);
   }
@@ -354,6 +363,9 @@ router.delete('/:id', validateTaskId, async (req, res, next) => {
       message: 'Task deleted successfully',
       data: deletedTask
     });
+
+    // Practical 10: background notification for deletion
+    taskEvents.emit('task-deleted', { task: deletedTask, user: req.user });
   } catch (err) {
     next(err);
   }
