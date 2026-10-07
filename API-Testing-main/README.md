@@ -228,3 +228,182 @@ Without proactive cache invalidation, write operations (`POST`, `PUT`, `PATCH`, 
 - A write mutation hitting Instance A would only invalidate Instance A's local cache, leaving Instance B and Instance C serving stale data to other users.
 - For distributed multi-server deployments, a centralized distributed in-memory cache such as **Redis** or **Memcached** is required so all server instances share a single source of cached truth.
 
+
+# Practical 10 — Asynchronous Processing with Event-Driven Architecture
+
+**CO/PO Mapping**: CO4 / PO3, PO5
+
+## 1. Objective
+
+To implement asynchronous background processing in the Task Management API using Node.js's built-in `EventEmitter` (no external dependencies), so that side effects such as notifications run **after** the HTTP response has been sent and never slow down the request-response cycle.
+
+## 2. Technology Used
+
+| Component | Purpose |
+| :--- | :--- |
+| Node.js `events` module | Built-in `EventEmitter` for event-driven decoupling |
+| Express.js + Mongoose | Existing REST API and MongoDB persistence |
+| MongoDB Atlas | Cloud database used for testing |
+| Postman / Thunder Client | API testing and response-time measurement |
+
+## 3. Architecture / Flow
+
+```text
+POST /tasks
+   |
+   v
+Save task to MongoDB
+   |
+   v
+Respond immediately ──► 201 Created  (log: [API] Response sent at <time>)
+   |
+   v
+emit('task-created', { task, user })
+   |
+   v  (handled asynchronously, after the response)
+Notification Listener
+   └── logs: task title, assigned user, timestamp (after simulated 2s delay)
+```
+
+## 4. Files Added / Modified
+
+| File | Purpose |
+| :--- | :--- |
+| `src/events/events.js` | Exports a single shared `TaskEvents` emitter instance |
+| `src/events/listeners.js` | Registers `task-created`, `task-deleted` and `error` listeners |
+| `src/routes/taskRoutes.js` | `POST /tasks` responds first, then emits `task-created`; `DELETE /tasks/:id` emits `task-deleted` |
+| `server.js` | Loads the listeners at start-up with `require('./src/events/listeners')` |
+| `.env.example` | Adds the optional `NOTIFICATION_DELAY_MS` variable |
+
+## 5. Events Implemented
+
+| Event | Emitted By | Listener Behaviour |
+| :--- | :--- | :--- |
+| `task-created` | `POST /tasks` (after the response is sent) | Waits 2 seconds (simulated slow work), then logs task title, assigned user and timestamp |
+| `task-deleted` | `DELETE /tasks/:id` (after the response is sent) | Logs the deleted task's title, the user and a timestamp |
+| `error` | Any failure inside a listener | Catches and logs the error so the process never crashes |
+
+The "assigned user" is the authenticated user taken from the JWT payload (`req.user.email`).
+
+## 6. Core Code
+
+**`src/events/events.js`**
+```js
+const EventEmitter = require('events');
+
+class TaskEvents extends EventEmitter {}
+
+module.exports = new TaskEvents();
+```
+
+**`POST /tasks` (response first, event second)**
+```js
+console.log(`[API] Response sent at ${new Date().toISOString()}`);
+res.status(201).json({ success: true, message: 'Task created successfully', data: taskObj, _links: links });
+
+taskEvents.emit('task-created', { task: taskObj, user: req.user });
+```
+
+**`task-created` listener (non-blocking delay)**
+```js
+taskEvents.on('task-created', async ({ task, user }) => {
+  try {
+    console.log(`[Listener] task-created handler started at ${new Date().toISOString()}`);
+    await sleep(NOTIFICATION_DELAY_MS);   // default 2000 ms
+    console.log(`[Notification] Task "${task.title}" | assigned user: ${user.email} | timestamp: ${new Date().toISOString()}`);
+  } catch (err) {
+    taskEvents.emit('error', err);
+  }
+});
+```
+
+## 7. Configuration
+
+Add these to your `.env` file (see `.env.example`):
+
+```env
+MONGO_URI=mongodb+srv://<username>:<password>@<cluster-address>/taskdb?appName=Cluster0
+JWT_SECRET=your_jwt_secret_here
+PORT=5000
+NOTIFICATION_DELAY_MS=2000
+```
+
+## 8. How to Test Using Postman
+
+1. Start the server: `npm start` (expect `MongoDB connected successfully`).
+2. **Register**: `POST http://localhost:5000/register`
+   ```json
+   { "name": "Utsav", "email": "utsav@example.com", "password": "password123" }
+   ```
+3. **Login**: `POST http://localhost:5000/login` and copy the `token`.
+   ```json
+   { "email": "utsav@example.com", "password": "password123" }
+   ```
+4. **Create task**: `POST http://localhost:5000/tasks` with `Authorization: Bearer <token>`:
+   ```json
+   { "title": "Demo task for Practical 10", "description": "Testing EventEmitter", "priority": "high" }
+   ```
+5. Observe the console log order (see Section 9).
+6. **Delete task**: `DELETE http://localhost:5000/tasks/<_id>` with the same token and observe the `task-deleted` notification.
+
+## 9. Expected Console Output
+
+```text
+[API] Response sent at 2026-10-07T08:10:00.045Z
+[Listener] task-created handler started at 2026-10-07T08:10:00.048Z
+[Notification] Task "Demo task for Practical 10" | assigned user: utsav@example.com | timestamp: 2026-10-07T08:10:02.051Z
+```
+
+On delete:
+```text
+[Notification] Task "Demo task for Practical 10" was DELETED by utsav@example.com at 2026-10-07T08:15:00.123Z
+```
+
+The `[API]` timestamp appears **before** the `[Notification]` timestamp, proving the handler does not block the response.
+
+## 10. Timestamp Evidence Table
+
+*(Example values shown; replace with the values from your own run.)*
+
+| Event | Timestamp | Time After Request |
+| :--- | :--- | :---: |
+| Request received | 08:10:00.000 | 0 ms |
+| `[API] Response sent` | 08:10:00.045 | 45 ms |
+| `[Listener]` handler started | 08:10:00.048 | 48 ms |
+| `[Notification]` handler finished | 08:10:02.051 | 2051 ms |
+
+## 11. Synchronous vs Asynchronous Comparison
+
+| Approach | Where Notification Logic Runs | Postman Response Time |
+| :--- | :--- | :---: |
+| **Asynchronous (EventEmitter)** | After the response, inside the listener | ≈ 20 ms *(to be measured)* |
+| **Synchronous (inside the route)** | Before the response, awaited in the route | ≈ 2000 ms *(to be measured)* |
+
+To reproduce the synchronous case, uncomment the `await new Promise((r) => setTimeout(r, 2000));` line in the `POST /tasks` route, restart the server and observe the response time in Postman. Comment it out again afterwards.
+
+## 12. Supplementary Problems
+
+1. **`task-deleted` event**: a second event with its own listener that logs a different message (Section 5).
+2. **`error` listener**: uncomment `throw new Error('Simulated notification failure')` in `listeners.js` and create a task. The API still returns `201` and the console shows `[Event Error] Simulated notification failure ...`.
+3. **Slow handler**: the 2-second `setTimeout`-based delay in the `task-created` listener confirms the API still responds instantly.
+
+## 13. Key Questions & Analysis
+
+### Why does emitting an event not block the API response?
+In the route, the response is sent with `res.status(201).json(...)` **before** `emit()` is called, so the client already has its answer. The listener then runs `await sleep(...)`, which hands control back to the Node.js event loop, so the single thread is free to serve other requests while the timer waits. Strictly speaking, `emit()` itself calls listeners synchronously; the non-blocking behaviour comes from the asynchronous work (`await` / timers) inside the listener.
+
+### What would happen if the notification logic were inside the POST route?
+The route would have to `await` the notification before responding, so every `POST /tasks` request would take the notification's duration on top of its normal time (about 2 seconds with the simulated delay). Section 11 shows this difference as roughly 20 ms versus 2000 ms.
+
+### Why is EventEmitter reasonable at this scale but not for millions of events per day?
+`EventEmitter` is simple, dependency-free and ideal for small applications. However, events live only in the memory of one Node.js process, so:
+- If the server crashes or restarts, pending events are **lost** (no persistence).
+- There are **no retries**, acknowledgements or dead-letter handling for failed events.
+- It cannot **scale horizontally**: an event emitted on instance A is invisible to instance B.
+- A heavy synchronous listener can block the single-threaded event loop for all users.
+
+High-volume production systems use a durable message broker such as **RabbitMQ**, **Apache Kafka** or **Redis-based queues (BullMQ)** with persistent storage, retries and independent worker processes.
+
+## 14. Learning Outcome
+
+Implemented non-blocking, event-driven background processing using Node's built-in `EventEmitter` and demonstrated, with timestamp evidence, how it keeps the main request-response cycle fast.
