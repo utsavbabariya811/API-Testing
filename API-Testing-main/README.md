@@ -654,3 +654,79 @@ https://github.com/utsavbabariya811/API-Testing/actions
 ## Result
 
 Successfully implemented a CI/CD pipeline using GitHub Actions. The pipeline automatically installs dependencies and executes automated API tests. Both failed and successful pipeline executions were demonstrated, verifying that GitHub Actions correctly detects errors and validates corrected code.
+
+
+## Practical 13: AI API Integration
+
+### Objective
+To integrate an AI API into the existing Task Management Web Application to generate meaningful and actionable task descriptions automatically.
+
+### Technologies Used
+- React.js
+- Node.js
+- Express.js
+- MongoDB
+- OpenAI API
+- JavaScript
+- REST API
+- Vite
+
+### Features Implemented
+1. Integrated the OpenAI API with the Express backend.
+2. Created an AI-powered task description generation endpoint.
+3. Added a Generate with AI button to the task creation form.
+4. Generated concise and actionable descriptions based on task titles.
+5. Added input validation for task titles.
+6. Implemented request rate limiting.
+7. Added fallback handling when the AI service is unavailable.
+8. Stored the OpenAI API key securely using environment variables.
+
+### API Endpoint
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/ai/generate-description` | Generates an AI-based task description |
+
+**Request Body**
+```json
+{
+  "title": "Prepare presentation for university project"
+}
+```
+
+**Successful Response**
+```json
+{
+  "success": true,
+  "description": "Research the topic, organize key points, prepare slides, and practice the presentation.",
+  "fallback": false
+}
+```
+
+### Environment Configuration
+
+Add your OpenAI API key to the backend `.env` file:
+
+```env
+OPENAI_API_KEY=your_openai_api_key
+```
+
+**Security:** Never commit the `.env` file or expose API credentials publicly.
+
+### How to Run
+
+**Backend**
+```bash
+npm install
+npm start
+```
+
+**Frontend**
+```bash
+cd client
+npm install
+npm run dev
+```
+
+### Conclusion
+This practical demonstrates the integration of an external AI service into a full-stack Task Management Application. It improves productivity by automatically generating useful task descriptions based on user-provided titles.
