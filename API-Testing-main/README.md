@@ -556,3 +556,101 @@ This verifies that database records persist across container recreation.
 ## 11. Result
 
 Successfully containerized and deployed the Task Management application using Docker Compose. The React frontend, Express backend, and MongoDB database ran as separate containers. Application access and MongoDB data persistence were successfully verified.
+
+
+# Practical 12: CI/CD Pipeline Using GitHub Actions
+
+## Aim
+To implement a Continuous Integration and Continuous Deployment (CI/CD) pipeline using GitHub Actions to automate dependency installation and software testing.
+
+## Objectives
+- Configure GitHub Actions to trigger automatically on pushes to the `main` branch.
+- Install project dependencies using `npm install`.
+- Execute automated API test cases using Jest and Supertest.
+- Demonstrate a failed pipeline using an intentionally incorrect test case.
+- Correct the test case and verify successful pipeline execution.
+
+## Technologies Used
+- Node.js
+- Express.js
+- Git and GitHub
+- GitHub Actions
+- Jest
+- Supertest
+- JavaScript
+
+## 1. Installation of Testing Dependencies
+
+Jest and Supertest were installed as development dependencies.
+
+```bash
+npm install --save-dev jest supertest
+```
+
+- **Jest:** Testing framework used to execute automated test cases.
+- **Supertest:** Library used to test HTTP requests and API responses.
+
+## 2. Automated API Test Cases
+
+A test file named `tests/api.test.js` was created to test the Task Management API.
+
+Two test cases were implemented:
+
+1. **HTTP 500 Internal Server Error:** Verifies that the `/tasks/test-error` endpoint returns status code 500.
+2. **HTTP 404 Not Found:** Verifies that an invalid route returns status code 404.
+
+The tests were executed using:
+
+```bash
+npm test
+```
+
+## 3. GitHub Actions Workflow Configuration
+
+A workflow file named `ci.yml` was created inside the `.github/workflows/` directory at the repository root.
+
+The workflow performs the following operations:
+
+1. Checks out the source code.
+2. Sets up Node.js version 22.
+3. Installs project dependencies using `npm install`.
+4. Executes automated tests using `npm test`.
+
+The pipeline is triggered on:
+- Push events to the `main` branch.
+- Pull requests targeting the `main` branch.
+
+## 4. Demonstration of Pipeline Failure
+
+To demonstrate failure detection, the expected HTTP status code in the first test case was deliberately changed from `500` to `200`.
+
+The actual API response returned status code `500`, causing the automated test to fail.
+
+The GitHub Actions pipeline detected the failed test and marked the workflow run as unsuccessful.
+
+## 5. Correction and Successful Execution
+
+The incorrect expected status code was corrected from `200` to `500`.
+
+The automated tests were executed again, and both test cases passed successfully.
+
+**Final Test Results:**
+- Test Suites: 1 passed
+- Tests: 2 passed, 2 total
+- Failed Tests: 0
+
+The corrected code was pushed to the `main` branch, triggering the GitHub Actions workflow again. The final CI pipeline completed successfully.
+
+## 6. CI Pipeline Status
+
+![CI Pipeline](https://github.com/utsavbabariya811/API-Testing/actions/workflows/ci.yml/badge.svg?branch=main)
+
+**GitHub Repository:**  
+https://github.com/utsavbabariya811/API-Testing
+
+**GitHub Actions:**  
+https://github.com/utsavbabariya811/API-Testing/actions
+
+## Result
+
+Successfully implemented a CI/CD pipeline using GitHub Actions. The pipeline automatically installs dependencies and executes automated API tests. Both failed and successful pipeline executions were demonstrated, verifying that GitHub Actions correctly detects errors and validates corrected code.
