@@ -348,3 +348,12 @@ export async function checkBackendHealth() {
   return { ok: false, error: 'Connection failed' };
 }
 
+/**
+ * Generate an AI task description (POST /api/ai/generate-description)
+ */
+export async function generateTaskDescription(title) {
+  return await request('/api/ai/generate-description', {
+    method: 'POST',
+    body: JSON.stringify({ title })
+  });
+}

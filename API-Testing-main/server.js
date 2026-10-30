@@ -13,6 +13,7 @@ const errorHandler = require('./src/middleware/errorHandler');
 // Routes
 const authRoutes = require('./src/routes/authRoutes');
 const taskRoutes = require('./src/routes/taskRoutes');
+const aiRoutes = require('./src/routes/aiRoutes');
 
 // Practical 10: Register event listeners
 require('./src/events/listeners');
@@ -38,6 +39,7 @@ app.use(express.static('public'));
 app.use('/auth', authRoutes);
 app.use('/', authRoutes); // Direct support for /register, /login, /me
 app.use('/tasks', taskRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 & Global Error Handler (must be LAST)
 app.use(notFoundHandler);
