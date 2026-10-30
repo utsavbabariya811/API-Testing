@@ -1,3 +1,4 @@
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -12,16 +13,20 @@ const errorHandler = require('./src/middleware/errorHandler');
 // Routes
 const authRoutes = require('./src/routes/authRoutes');
 const taskRoutes = require('./src/routes/taskRoutes');
-// Practical 10: register event listeners
+
+// Practical 10: Register event listeners
 require('./src/events/listeners');
+
 const app = express();
 
+// CORS Configuration
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// General Middleware
 app.use(express.json());
 app.use(loggerMiddleware);
 app.use(contentTypeMiddleware);
@@ -29,31 +34,34 @@ app.use(contentTypeMiddleware);
 // Serve static files (Interactive Dashboard)
 app.use(express.static('public'));
 
-// ── Connect to MongoDB ───────────────────────────────────────────────────────
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/taskdb';
-mongoose.connect(MONGO_URI)
-  .then(() => {
-    console.log(`MongoDB connected successfully to ${MONGO_URI}`);
-  })
-  .catch((err) => {
-    console.error('MongoDB connection error:', err.message);
-  });
-
-// ── Routes ───────────────────────────────────────────────────────────────────
+// Routes
 app.use('/auth', authRoutes);
 app.use('/', authRoutes); // Direct support for /register, /login, /me
 app.use('/tasks', taskRoutes);
 
-// ── 404 & Global Error Handler (must be LAST) ────────────────────────────────
+// 404 & Global Error Handler (must be LAST)
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// ── Start server (Only when executed directly, not when required in tests) ──
+// Connect to MongoDB and start server
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Express Backend running on http://localhost:${PORT}`);
-  });
+  const MONGO_URI =
+    process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/taskdb';
+
+  mongoose.connect(MONGO_URI)
+    .then(() => {
+      console.log('MongoDB connected successfully');
+
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Express Backend running on port ${PORT}`);
+      });
+    })
+    .catch((err) => {
+      console.error('MongoDB connection error:', err.message);
+      process.exit(1);
+    });
 }
 
+// Export app for testing
 module.exports = app;

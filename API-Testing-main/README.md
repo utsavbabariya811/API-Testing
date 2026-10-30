@@ -407,3 +407,152 @@ High-volume production systems use a durable message broker such as **RabbitMQ**
 ## 14. Learning Outcome
 
 Implemented non-blocking, event-driven background processing using Node's built-in `EventEmitter` and demonstrated, with timestamp evidence, how it keeps the main request-response cycle fast.
+
+
+---
+
+# Practical 11 — Containerization of Full-Stack Task Management Application Using Docker
+
+**Course:** Advanced Web Development Frameworks (ITUE301)
+
+## 1. Objective
+
+To containerize a full-stack Task Management application using Docker and Docker Compose by creating separate containers for the React frontend, Node.js and Express backend, and MongoDB database. Configure container networking, persistent database storage, and Nginx reverse proxy to run the complete application using a single Docker Compose command.
+
+## 2. Technology Used
+
+| Component | Technology |
+|---|---|
+| Frontend | React.js, Vite |
+| Backend | Node.js, Express.js |
+| Database | MongoDB 7 |
+| Containerization | Docker |
+| Orchestration | Docker Compose |
+| Web Server / Reverse Proxy | Nginx |
+| Database ODM | Mongoose |
+
+## 3. Architecture
+
+```text
+                User Browser
+                     |
+                     v
+              localhost:3000
+                     |
+                     v
+          Frontend Container (Nginx)
+              React Application
+                     |
+              API Reverse Proxy
+                     |
+                     v
+           Backend Container
+             Node.js + Express
+                Port 5000
+                     |
+                     v
+            MongoDB Container
+               Database
+                     |
+                     v
+              mongodb_data
+             Persistent Volume
+```
+
+## 4. Docker Files Implemented
+
+| File | Purpose |
+|---|---|
+| `Dockerfile` | Builds the Node.js backend image |
+| `client/Dockerfile` | Builds React frontend and serves it using Nginx |
+| `client/nginx.conf` | Configures frontend routing and backend API proxy |
+| `docker-compose.yml` | Defines and orchestrates all three services |
+| `.dockerignore` | Excludes unnecessary files from Docker build contexts |
+| `client/.dockerignore` | Excludes unnecessary frontend files |
+
+## 5. Docker Compose Services
+
+Three services are configured:
+
+- **MongoDB:** Uses `mongo:7` and stores database files in the `mongodb_data` named volume.
+- **Backend:** Builds the Express application, exposes port `5000`, and connects to MongoDB using `mongodb://mongodb:27017/taskdb`.
+- **Frontend:** Builds the React application and serves it through Nginx on port `3000`.
+
+The backend waits for MongoDB's health check before starting.
+
+## 6. Container Build and Execution
+
+Validate the Docker Compose configuration:
+
+```bash
+docker compose config
+```
+
+List configured services:
+
+```bash
+docker compose config --services
+```
+
+Build Docker images:
+
+```bash
+docker compose build
+```
+
+Start all containers:
+
+```bash
+docker compose up -d
+```
+
+Check running containers:
+
+```bash
+docker compose ps
+```
+
+## 7. Application Access
+
+| Component | URL |
+|---|---|
+| React Frontend | http://localhost:3000 |
+| Express Backend | http://localhost:5000 |
+| MongoDB | Internal Docker network, port 27017 |
+
+## 8. Container Logs
+
+View backend and MongoDB logs:
+
+```bash
+docker compose logs --tail=30 backend mongodb
+```
+
+The backend logs confirm successful MongoDB connection and server startup.
+
+## 9. Persistent Storage Verification
+
+A named Docker volume, `mongodb_data`, is configured for MongoDB.
+
+Persistence was verified by:
+
+1. Creating tasks in the application.
+2. Stopping the containers using `docker compose down`.
+3. Starting the containers again using `docker compose up -d`.
+4. Opening the frontend and confirming previously created tasks remained visible.
+
+This verifies that database records persist across container recreation.
+
+## 10. Learning Outcomes
+
+- Understood Docker images and containers.
+- Created separate Dockerfiles for frontend and backend.
+- Configured a multi-container application using Docker Compose.
+- Implemented container-to-container communication.
+- Configured Nginx as a reverse proxy.
+- Implemented persistent MongoDB storage using Docker volumes.
+- Successfully deployed and verified a full-stack application using Docker.
+
+## 11. Result
+
+Successfully containerized and deployed the Task Management application using Docker Compose. The React frontend, Express backend, and MongoDB database ran as separate containers. Application access and MongoDB data persistence were successfully verified.
